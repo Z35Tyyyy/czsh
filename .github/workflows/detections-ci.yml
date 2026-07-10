@@ -28,7 +28,8 @@ jobs:
       - name: Install linters
         run: pip install ruff yamllint
       - name: yamllint the rules and test cases
-        run: yamllint -d "{extends: relaxed, rules: {line-length: disable}}" detections/ tests/cases/
+        run: |
+          yamllint -d "{extends: relaxed, rules: {line-length: disable}}" detections/ tests/cases/
       - name: ruff the Python
         run: ruff check dac/ tools/ tests/
 
