@@ -1,0 +1,4 @@
+# Runtime dependency for the offline matcher + tooling.
+# The matcher engine (dac/) is deliberately dependency-light so the test
+# harness always runs, even where pySigma or a SIEM are unavailable.
+PyYAML>=6.0

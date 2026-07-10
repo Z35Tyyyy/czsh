@@ -1,0 +1,25 @@
+rule: defense_evasion/proc_creation_clear_eventlog.yml
+atomic_test: T1070.001 / "Clear Logs" and "Clear Event Logs via PowerShell"
+true_positives:
+  - name: wevtutil clears the security log
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wevtutil.exe'
+      CommandLine: 'wevtutil.exe cl security'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: powershell clears the system log
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Clear-EventLog -LogName System'
+true_negatives:
+  - name: wevtutil querying events is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wevtutil.exe'
+      CommandLine: 'wevtutil.exe qe Security /c:5 /rd:true /f:text'
+  - name: wevtutil enumerating log names is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wevtutil.exe'
+      CommandLine: 'wevtutil.exe el'

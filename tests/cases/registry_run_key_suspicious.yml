@@ -1,0 +1,32 @@
+rule: persistence/registry_run_key_suspicious.yml
+atomic_test: T1547.001 / "Reg Key Run" and "PowerShell Registry RunOnce"
+true_positives:
+  - name: run key set to a powershell payload
+    event:
+      EventID: 13
+      EventType: SetValue
+      TargetObject: 'HKU\S-1-5-21-x\Software\Microsoft\Windows\CurrentVersion\Run\Updater'
+      Details: 'powershell.exe -nop -w hidden -enc SQBFAFgA'
+      Image: 'C:\Windows\System32\reg.exe'
+  - name: runonce staging out of appdata
+    event:
+      EventID: 13
+      EventType: SetValue
+      TargetObject: 'HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce\svc'
+      Details: 'C:\Users\victim\AppData\Roaming\update.vbs'
+      Image: 'C:\Windows\System32\reg.exe'
+true_negatives:
+  - name: legitimate signed app autorun in Program Files
+    event:
+      EventID: 13
+      EventType: SetValue
+      TargetObject: 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run\Contoso'
+      Details: 'C:\Program Files\Contoso\contoso.exe /background'
+      Image: 'C:\Program Files\Contoso\installer.exe'
+  - name: registry set elsewhere is out of scope
+    event:
+      EventID: 13
+      EventType: SetValue
+      TargetObject: 'HKLM\System\CurrentControlSet\Services\Foo\Start'
+      Details: 'powershell.exe'
+      Image: 'C:\Windows\System32\services.exe'

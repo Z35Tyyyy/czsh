@@ -1,0 +1,45 @@
+title: Microsoft Defender Tampering
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e12
+status: experimental
+description: >
+  Detects attempts to weaken Microsoft Defender: disabling real-time/behavior
+  monitoring via Set-MpPreference, stopping the WinDefend service, or adding a
+  broad ExclusionPath so future payloads are ignored. Disabling endpoint
+  protection is a common precursor to dropping tooling and is high-signal outside
+  of sanctioned maintenance windows.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1562.001/T1562.001.md
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.defense_evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_flag:
+    CommandLine|contains:
+      - 'DisableRealtimeMonitoring'
+      - 'DisableBehaviorMonitoring'
+      - 'DisableIOAVProtection'
+      - 'DisableScriptScanning'
+      - 'DisableBlockAtFirstSeen'
+  selection_enable_true:
+    CommandLine|contains:
+      - ' $true'
+      - ' 1'
+  selection_service_stop:
+    CommandLine|contains|all:
+      - 'stop'
+      - 'windefend'
+  selection_exclusion:
+    CommandLine|contains|all:
+      - 'Add-MpPreference'
+      - 'ExclusionPath'
+  condition: (selection_flag and selection_enable_true) or selection_service_stop or selection_exclusion
+falsepositives:
+  - Endpoint software or IT maintenance may set exclusions. Confirm the change was
+    authorized and scoped narrowly (a specific signed path, not a whole drive).
+level: high

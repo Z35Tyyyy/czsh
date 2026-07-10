@@ -1,0 +1,37 @@
+title: Ingress Tool Transfer via certutil
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e15
+status: experimental
+description: >
+  Detects certutil.exe being abused to download a remote file (urlcache /
+  verifyctl with an http/https/ftp URL). certutil is a signed certificate utility,
+  not a downloader, so this pattern is a classic LOLBIN ingress-tool-transfer used
+  to stage second-stage tooling while evading application allow-listing.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1105/T1105.md
+  - https://lolbas-project.github.io/lolbas/Binaries/Certutil/
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.command_and_control
+  - attack.t1105
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_bin:
+    Image|endswith: '\certutil.exe'
+  selection_flags:
+    CommandLine|contains:
+      - 'urlcache'
+      - 'verifyctl'
+  selection_url:
+    CommandLine|contains:
+      - 'http://'
+      - 'https://'
+      - 'ftp://'
+  condition: selection_bin and selection_flags and selection_url
+falsepositives:
+  - certutil can legitimately fetch CRLs. The combination of urlcache + an
+    arbitrary http URL writing a local file is the distinguishing factor.
+level: high

@@ -1,0 +1,25 @@
+rule: persistence/proc_creation_local_account_manipulation.yml
+atomic_test: T1136.001 / "Create a new user in a command prompt"
+true_positives:
+  - name: create a new local backdoor account
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe user support Passw0rd123! /add'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: add account to local administrators
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net1.exe'
+      CommandLine: 'net1 localgroup administrators support /add'
+true_negatives:
+  - name: listing users is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe user'
+  - name: viewing a group membership is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe localgroup administrators'

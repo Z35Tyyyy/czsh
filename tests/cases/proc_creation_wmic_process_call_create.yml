@@ -1,0 +1,25 @@
+rule: execution/proc_creation_wmic_process_call_create.yml
+atomic_test: T1047 / "WMI Execute Local Process", redcanaryco atomic-red-team
+true_positives:
+  - name: wmic spawns a process locally
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wbem\WMIC.exe'
+      CommandLine: 'wmic.exe process call create "calc.exe"'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: wmic spawns a process on a remote host
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wbem\WMIC.exe'
+      CommandLine: 'wmic.exe /node:10.0.0.5 process call create "powershell.exe -enc ..."'
+true_negatives:
+  - name: benign wmic inventory query
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\wbem\WMIC.exe'
+      CommandLine: 'wmic.exe process list brief'
+  - name: word create appears but not via wmic
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c echo process call create'

@@ -1,0 +1,38 @@
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build / generated artifacts
+/build-artifacts/
+/site/
+
+# Local secrets / env
+.env
+*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Generated (regenerated in CI; a committed snapshot lives under docs/)
+/attack-layer.json
+
+# Windows reserved-name artifact occasionally created by shell redirects
+NUL

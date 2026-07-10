@@ -1,0 +1,33 @@
+title: Sensitive Registry Hive Export via reg save
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e05
+status: experimental
+description: >
+  Detects use of reg.exe to save the SAM, SYSTEM, or SECURITY registry hives to
+  disk. Together these hives allow offline extraction of local account password
+  hashes and LSA secrets, so exporting them is a classic credential-access step.
+  Backing up non-sensitive keys is common and is deliberately excluded.
+references:
+  - https://attack.mitre.org/techniques/T1003/002/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1003.002/T1003.002.md
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.credential_access
+  - attack.t1003.002
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_save:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains: ' save '
+  selection_hive:
+    CommandLine|contains:
+      - '\sam'
+      - '\system'
+      - '\security'
+  condition: selection_save and selection_hive
+falsepositives:
+  - Backup software that legitimately exports the SYSTEM hive. Correlate with the
+    running account and whether SAM/SECURITY are dumped in the same window.
+level: high

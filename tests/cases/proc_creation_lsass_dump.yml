@@ -1,0 +1,25 @@
+rule: credential_access/proc_creation_lsass_dump.yml
+atomic_test: T1003.001 / "Dump LSASS.exe using ProcDump" and "comsvcs.dll"
+true_positives:
+  - name: procdump full dump of lsass
+    event:
+      EventID: 1
+      Image: 'C:\Tools\procdump.exe'
+      CommandLine: 'procdump.exe -accepteula -ma lsass.exe C:\temp\lsass.dmp'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: comsvcs.dll minidump via rundll32
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump 624 C:\temp\out.dmp full'
+true_negatives:
+  - name: procdump against a benign process
+    event:
+      EventID: 1
+      Image: 'C:\Tools\procdump.exe'
+      CommandLine: 'procdump.exe -accepteula -ma notepad.exe C:\temp\np.dmp'
+  - name: benign rundll32 loading a control panel applet
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe shell32.dll,Control_RunDLL desk.cpl'

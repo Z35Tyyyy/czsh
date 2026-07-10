@@ -1,0 +1,30 @@
+rule: defense_evasion/proc_creation_disable_defender.yml
+atomic_test: T1562.001 / "Disable Microsoft Defender" (Set-MpPreference / sc stop)
+true_positives:
+  - name: disable real-time monitoring
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Set-MpPreference -DisableRealtimeMonitoring $true'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: stop the WinDefend service
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\sc.exe'
+      CommandLine: 'sc.exe stop WinDefend'
+  - name: add a broad exclusion path
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Add-MpPreference -ExclusionPath C:\Users\Public'
+true_negatives:
+  - name: querying defender settings is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Get-MpPreference'
+  - name: re-enabling real-time monitoring should not alert
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Set-MpPreference -DisableRealtimeMonitoring $false'

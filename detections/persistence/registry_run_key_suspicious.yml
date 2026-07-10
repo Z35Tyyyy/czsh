@@ -1,0 +1,47 @@
+title: Suspicious Autorun Value in Registry Run Key
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e07
+status: experimental
+description: >
+  Detects a value written to a CurrentVersion\Run or \RunOnce autostart key whose
+  data points at a script host, LOLBIN, or a user-writable staging directory
+  (AppData/Temp/ProgramData). Legitimate applications register autoruns too, so
+  the detection keys on the *content* of the value rather than merely the location.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1547.001/T1547.001.md
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: registry_set
+detection:
+  selection_key:
+    EventID: 13
+    TargetObject|contains:
+      - '\CurrentVersion\Run\'
+      - '\CurrentVersion\RunOnce\'
+  selection_details:
+    Details|contains:
+      - 'powershell'
+      - 'pwsh'
+      - 'cmd /c'
+      - 'cmd.exe /c'
+      - 'wscript'
+      - 'cscript'
+      - 'mshta'
+      - 'rundll32'
+      - 'regsvr32'
+      - '\appdata\'
+      - '\temp\'
+      - '\programdata\'
+      - '.vbs'
+      - '.js'
+      - ' -enc'
+  condition: selection_key and selection_details
+falsepositives:
+  - Some legitimate updaters stage helpers in ProgramData. Confirm the writing
+    process (Image) and whether the target binary is signed.
+level: high

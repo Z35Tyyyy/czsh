@@ -1,0 +1,25 @@
+rule: credential_access/proc_creation_ntdsutil_dump.yml
+atomic_test: T1003.003 / "Create Volume Shadow Copy with ntdsutil"
+true_positives:
+  - name: ntdsutil ifm full copy of ntds.dit
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\ntdsutil.exe'
+      CommandLine: 'ntdsutil.exe "ac i ntds" "ifm" "create full C:\temp\ntds" q q'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: ntdsutil create full shorthand
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\ntdsutil.exe'
+      CommandLine: 'ntdsutil snapshot "activate instance ntds" create full C:\exfil q q'
+true_negatives:
+  - name: ntdsutil launched interactively with no dump keywords
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\ntdsutil.exe'
+      CommandLine: 'ntdsutil.exe'
+  - name: unrelated backup tool using the phrase create full
+    event:
+      EventID: 1
+      Image: 'C:\Program Files\Backup\backup.exe'
+      CommandLine: 'backup.exe --create full C:\data'

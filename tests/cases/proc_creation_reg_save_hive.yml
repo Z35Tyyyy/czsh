@@ -1,0 +1,25 @@
+rule: credential_access/proc_creation_reg_save_hive.yml
+atomic_test: T1003.002 / "Registry dump of SAM, creds, and secrets"
+true_positives:
+  - name: reg save of the SAM hive
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe save hklm\sam C:\temp\sam.hive'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: reg save of the SYSTEM hive
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe save hklm\system C:\temp\system.hive'
+true_negatives:
+  - name: reg query is not an export
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe query hklm\software\microsoft\windows\currentversion\run'
+  - name: reg save of a non-sensitive application key
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\reg.exe'
+      CommandLine: 'reg.exe save hklm\software\contoso C:\backups\contoso.hive'
