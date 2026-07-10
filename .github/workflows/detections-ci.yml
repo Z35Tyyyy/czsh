@@ -76,8 +76,12 @@ jobs:
         run: python tools/generate_attack_layer.py detections/ --out attack-layer.json
       - name: Regenerate coverage & health dashboard
         run: python tools/generate_dashboard.py detections/ --out dashboard.html
+      - name: Regenerate SOC triage report (offline heuristic client)
+        run: python tools/generate_triage_report.py --out triage-report.html
       - name: Print ATT&CK coverage summary
         run: python -m dac.cli coverage detections/
+      - name: Print triage evaluation metrics
+        run: python -m triage.cli evaluate --offline
       - name: Upload SIEM query + coverage artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -86,6 +90,7 @@ jobs:
             splunk-queries.txt
             attack-layer.json
             dashboard.html
+            triage-report.html
 
   # Illustrative deploy stage. In a real environment this step would push the
   # translated queries to a SIEM (Splunk saved searches / Elastic detection API)

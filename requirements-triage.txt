@@ -1,0 +1,7 @@
+# Optional: only needed to run the LLM triage layer against the real Groq API
+# (GroqTriageClient). The rest of the triage package — enrichment, the offline
+# HeuristicTriageClient, the pipeline, evaluation, and the report generator — runs
+# with just the base requirements, which is why the test suite needs no API key.
+-r requirements.txt
+
+groq>=0.11.0

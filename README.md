@@ -47,6 +47,43 @@ make dashboard   # regenerates docs/dashboard.html; open it in any browser
 Because it embeds test results computed at generation time, it's a health monitor,
 not just a catalog — a detection that stops firing shows up as a failing row.
 
+## LLM-assisted alert triage
+
+An AI layer on top of the detections. When a detection fires, it becomes an
+**alert**; the [`triage/`](triage/) package enriches it (pulls out IOCs, attaches
+ATT&CK context) and drafts the tier-1 triage an analyst would otherwise write from
+scratch — a summary, a severity call, a true/false-positive judgement, and
+concrete next steps — rendered as a prioritized SOC queue.
+
+![SOC triage queue](docs/img/triage-report.png)
+
+Three things make this more than "call an LLM on a log line":
+
+1. **Provider-agnostic by design.** Triage sits behind one interface
+   (`triage(alert) -> TriageResult`). This project's LLM backend is **[Groq](https://groq.com)**
+   (open models like Llama behind an OpenAI-compatible API), but switching
+   providers is a one-class change — nothing else in the package moves.
+2. **Alert data is treated as untrusted (OWASP LLM01).** Command lines and
+   filenames in an alert are attacker-controlled and may be crafted to look like
+   instructions. The event is fenced in an `<alert_data>` block and the model is
+   told to treat everything inside as *data, never instructions* — prompt-injection
+   defense built in.
+3. **It ships with an evaluation.** [`triage.evaluate`](triage/evaluate.py) scores
+   the triage against the detections' own severities (agreement, escalations,
+   severity-step delta), so "is the LLM's judgement any good?" is a number, not a
+   vibe.
+
+The whole layer runs **offline with no API key** via a deterministic
+`HeuristicTriageClient` — which is what CI and the tests use — so it's fully
+reproducible; point it at Groq only when you want the real model. Details:
+**[triage/README.md](triage/README.md)**.
+
+```bash
+python -m triage.cli run --offline -v        # triage the queue, no key needed
+export GROQ_API_KEY=gsk_...                   # then use the real model:
+python -m triage.cli run
+```
+
 ## Pipeline
 
 ```mermaid
@@ -68,6 +105,7 @@ Each stage is a job in [`.github/workflows/detections-ci.yml`](.github/workflows
 | [`detections/`](detections/) | 15 Sigma rules, organised by ATT&CK tactic |
 | [`tests/cases/`](tests/cases/) | Per-rule true-positive / true-negative sample events |
 | [`dac/`](dac/) | The offline Sigma evaluation engine (matcher + condition parser) |
+| [`triage/`](triage/) | LLM-assisted alert triage (enrichment + Groq/offline clients + evaluation) |
 | [`tests/`](tests/) | pytest harness — behavioural + governance + engine unit tests |
 | [`tools/`](tools/) | pySigma validator, ATT&CK layer / dashboard / catalog generators |
 | [`.github/workflows/`](.github/workflows/) | The CI/CD pipeline |
@@ -163,7 +201,7 @@ atomic test that exercises it, so you can run the attack and watch the alert fir
 
 - **base64 / obfuscation modifiers** in the engine to cover encoded PowerShell payloads at the token level, not just the `-enc` flag.
 - **Correlation rules** (Sigma's `correlation` type) for multi-event detections like discovery bursts, which single-event rules under-serve.
-- **An LLM triage layer** that summarises a fired alert and suggests a severity, evaluated against my own manual triage — the natural AI extension of this pipeline.
+- **A labelled triage dataset** so the [LLM triage layer](triage/) can be evaluated against human decisions, not just the detections' own severities.
 - **Linux coverage** (auditd / Sysmon-for-Linux) alongside the Windows rules.
 
 ## Skills this demonstrates
@@ -171,7 +209,8 @@ atomic test that exercises it, so you can run the attack and watch the alert fir
 Detection engineering · Sigma & MITRE ATT&CK · detection-as-code / CI-CD · Python
 (parser + evaluation engine, no framework) · test design (true/false-positive
 modelling, governance tests) · GitHub Actions · SIEM query translation (Splunk /
-Elastic) · technical writing.
+Elastic) · **LLM integration (Groq) with prompt-injection defense (OWASP LLM01)
+and a measured evaluation** · technical writing.
 
 ## License
 

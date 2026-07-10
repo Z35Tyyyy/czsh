@@ -3,7 +3,7 @@
 
 PY ?= python
 
-.PHONY: help install test lint validate translate coverage layer dashboard catalog docs all clean
+.PHONY: help install test lint validate translate coverage layer dashboard catalog triage triage-report docs all clean
 
 help:
 	@echo "make install    - install dev dependencies"
@@ -15,6 +15,8 @@ help:
 	@echo "make layer      - regenerate the ATT&CK Navigator layer JSON"
 	@echo "make dashboard  - regenerate the coverage & health dashboard (docs/dashboard.html)"
 	@echo "make catalog    - regenerate the detection catalog (docs/DETECTIONS.md)"
+	@echo "make triage     - run LLM alert triage (offline heuristic; Groq if GROQ_API_KEY set)"
+	@echo "make triage-report - regenerate the SOC triage-queue report (docs/triage-report.html)"
 	@echo "make all        - lint + validate + test + coverage"
 
 install:
@@ -45,7 +47,13 @@ dashboard:
 catalog:
 	$(PY) tools/generate_catalog.py detections/ --out docs/DETECTIONS.md
 
-docs: layer dashboard catalog
+triage:
+	$(PY) -m triage.cli run -v
+
+triage-report:
+	$(PY) tools/generate_triage_report.py --out docs/triage-report.html
+
+docs: layer dashboard catalog triage-report
 
 all: lint validate test coverage
 
