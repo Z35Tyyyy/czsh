@@ -1,0 +1,43 @@
+title: Local Account Creation or Privileged Group Addition via net
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e09
+status: experimental
+description: >
+  Detects creation of a new local account (net user /add) or the addition of an
+  account to the local Administrators group (net localgroup administrators /add).
+  Attackers create backdoor accounts for durable access and add accounts to
+  privileged groups to escalate; both are cheap, high-signal actions on servers
+  and workstations that rarely see routine local-account churn.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1136.001/T1136.001.md
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1136.001
+  - attack.t1098
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_user_add:
+    Image|endswith:
+      - '\net.exe'
+      - '\net1.exe'
+    CommandLine|contains|all:
+      - ' user '
+      - ' /add'
+  selection_group_add:
+    Image|endswith:
+      - '\net.exe'
+      - '\net1.exe'
+    CommandLine|contains|all:
+      - 'localgroup'
+      - 'administrators'
+      - ' /add'
+  condition: 1 of selection_*
+falsepositives:
+  - Provisioning scripts and MDM tooling create local accounts. Correlate with the
+    account name and whether the action was operator-initiated.
+level: medium

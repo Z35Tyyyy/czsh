@@ -1,0 +1,25 @@
+rule: persistence/proc_creation_scheduled_task_create.yml
+atomic_test: T1053.005 / "Scheduled Task Startup Script"
+true_positives:
+  - name: task runs an encoded powershell payload
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /create /sc minute /mo 5 /tn Updater /tr "powershell -enc SQBFAFgA" /ru system'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: task launches a binary staged in temp
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /create /sc onlogon /tn Sync /tr C:\Users\v\AppData\Local\Temp\a.exe'
+true_negatives:
+  - name: querying tasks is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /query /fo LIST'
+  - name: legitimate task pointing at Program Files
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\schtasks.exe'
+      CommandLine: 'schtasks.exe /create /sc daily /tn ContosoUpdate /tr "C:\Program Files\Contoso\update.exe"'

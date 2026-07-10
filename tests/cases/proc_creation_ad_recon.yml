@@ -1,0 +1,25 @@
+rule: discovery/proc_creation_ad_recon.yml
+atomic_test: T1087.002 / "Enumerate all accounts" and T1482 nltest trusts
+true_positives:
+  - name: enumerate domain admins group
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe group "Domain Admins" /domain'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+  - name: nltest enumerates domain trusts
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\nltest.exe'
+      CommandLine: 'nltest.exe /domain_trusts /all_trusts'
+true_negatives:
+  - name: listing a local group is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net.exe group'
+  - name: whoami is not covered by this rule
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\whoami.exe'
+      CommandLine: 'whoami.exe'

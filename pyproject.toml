@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "detection-as-code-lab"
+version = "0.1.0"
+description = "A detection-as-code pipeline: Sigma rules, an offline test harness, and CI/CD for blue-team detection engineering."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+dac = "dac.cli:main"
+
+[tool.setuptools]
+packages = ["dac"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# The dashboard generator embeds HTML/CSS/JS template strings where a 100-column
+# limit isn't meaningful; everything else in the file is still linted.
+"tools/generate_dashboard.py" = ["E501"]

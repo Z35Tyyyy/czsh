@@ -1,0 +1,108 @@
+name: detections-ci
+
+# Detection-as-Code pipeline: every push / PR that touches a rule runs the same
+# gates a production detection team would enforce before shipping a detection.
+#
+#   lint  ->  validate (pySigma)  ->  test (offline harness)  ->  translate + coverage
+#
+# The deploy stage is intentionally gated to main and documented as a dry-run so
+# the repo is safe to fork and run without wiring up real SIEM credentials.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install linters
+        run: pip install ruff yamllint
+      - name: yamllint the rules and test cases
+        run: yamllint -d "{extends: relaxed, rules: {line-length: disable}}" detections/ tests/cases/
+      - name: ruff the Python
+        run: ruff check dac/ tools/ tests/
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pySigma + backends
+        run: pip install -r requirements-dev.txt
+      - name: Validate every rule with pySigma
+        run: python tools/validate_sigma.py detections/
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install runtime + test deps
+        run: pip install -r requirements.txt pytest
+      - name: Run the offline detection harness
+        run: python -m pytest -q
+
+  translate-and-coverage:
+    needs: [lint, validate, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install -r requirements-dev.txt
+      - name: Compile rules to Splunk SPL (artifact)
+        run: python tools/validate_sigma.py detections/ --translate splunk | tee splunk-queries.txt
+      - name: Regenerate ATT&CK Navigator layer
+        run: python tools/generate_attack_layer.py detections/ --out attack-layer.json
+      - name: Regenerate coverage & health dashboard
+        run: python tools/generate_dashboard.py detections/ --out dashboard.html
+      - name: Print ATT&CK coverage summary
+        run: python -m dac.cli coverage detections/
+      - name: Upload SIEM query + coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: detection-artifacts
+          path: |
+            splunk-queries.txt
+            attack-layer.json
+            dashboard.html
+
+  # Illustrative deploy stage. In a real environment this step would push the
+  # translated queries to a SIEM (Splunk saved searches / Elastic detection API)
+  # via an API token stored in repository secrets. It is a documented dry-run
+  # here so the pipeline is safe to run in any fork.
+  deploy-dry-run:
+    needs: [translate-and-coverage]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install -r requirements-dev.txt
+      - name: Dry-run deploy to SIEM (staging)
+        run: |
+          echo "Would deploy the following queries to the staging SIEM index:"
+          python tools/validate_sigma.py detections/ --translate splunk | grep "splunk>" || true
+          echo "Real deploy would POST these as saved searches using \$SIEM_TOKEN."

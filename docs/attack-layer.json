@@ -1,0 +1,159 @@
+{
+  "name": "Detection-as-Code Coverage",
+  "versions": {
+    "attack": "14",
+    "navigator": "4.9.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Detection coverage generated from 15 Sigma rules spanning 17 ATT&CK techniques.",
+  "techniques": [
+    {
+      "techniqueID": "T1003.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "LSASS Memory Dump for Credential Theft",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1003.002",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Sensitive Registry Hive Export via reg save",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1003.003",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Active Directory Database Dump via ntdsutil",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1047",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Process Execution via WMIC process call create",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1053.005",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Suspicious Scheduled Task Creation via schtasks",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1059",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Office Application Spawning a Command Interpreter",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1059.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "PowerShell EncodedCommand Execution",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1070.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Windows Event Log Cleared",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1087.002",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Active Directory Reconnaissance via Built-in Tools",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1098",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Local Account Creation or Privileged Group Addition via net",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1105",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Ingress Tool Transfer via certutil",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1136.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Local Account Creation or Privileged Group Addition via net",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1218.005",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Mshta Executing Remote or Inline Script",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1482",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Active Directory Reconnaissance via Built-in Tools",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1490",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Shadow Copy Deletion / Recovery Inhibition",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1547.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Suspicious Autorun Value in Registry Run Key",
+      "enabled": true
+    },
+    {
+      "techniqueID": "T1562.001",
+      "score": 1,
+      "color": "#fdd0a2",
+      "comment": "Microsoft Defender Tampering",
+      "enabled": true
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#fdd0a2",
+      "#a63603"
+    ],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [
+    {
+      "label": "1 rule",
+      "color": "#fdd0a2"
+    },
+    {
+      "label": "2+ rules",
+      "color": "#fd8d3c"
+    },
+    {
+      "label": "3+ rules",
+      "color": "#e6550d"
+    }
+  ],
+  "layout": {
+    "layout": "side",
+    "showID": true,
+    "showName": true
+  },
+  "hideDisabled": false
+}

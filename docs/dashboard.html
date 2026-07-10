@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Detection-as-Code Lab</title>
+<script>
+/* Resolve the theme to an explicit attribute before first paint (no flash, and
+   colour resolution never depends on a media query — see notes in the CSS). */
+(function(){var r=document.documentElement,s=null;
+try{s=localStorage.getItem('dac-theme');}catch(e){}
+var dark=s?(s==='dark'):(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);
+r.setAttribute('data-theme',dark?'dark':'light');})();
+</script>
+<style>
+/* Theme is driven purely by the [data-theme] attribute (set by the head script
+   from a saved preference or the OS setting). Colour resolution deliberately does
+   NOT use a prefers-color-scheme media query, so toggling to light always wins
+   even on a dark-mode OS. :root is the light default (also the no-JS fallback). */
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --text:#0b0b0b; --text-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --border:rgba(11,11,11,.10); --accent:#2a78d6;
+  --seq-1:#86b6ef; --seq-2:#3987e5; --seq-3:#1c5cab;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --good-ink:#006300;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --text:#fff; --text-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --border:rgba(255,255,255,.10); --accent:#3987e5;
+  --seq-1:#3987e5; --seq-2:#5598e7; --seq-3:#86b6ef;
+  --good-ink:#0ca30c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:32px 20px 56px}
+h1{font-size:1.55rem;margin:0;font-weight:650;letter-spacing:-.01em}
+h2{font-size:1.02rem;margin:0 0 2px;font-weight:600}
+.sub{color:var(--text-2);margin:4px 0 0;font-size:.9rem}
+.card-sub{color:var(--muted);margin:0 0 16px;font-size:.83rem}
+a{color:var(--accent)}
+code{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:.86em;
+  background:color-mix(in srgb,var(--muted) 16%,transparent);padding:1px 5px;border-radius:4px}
+
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:24px}
+.head-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.theme-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-2);
+  width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:1rem}
+.theme-btn:hover{color:var(--text)}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+  font-size:.82rem;font-weight:600;border:1px solid var(--border)}
+.pill .dot{width:8px;height:8px;border-radius:50%}
+.pill.ok{color:var(--good-ink)} .pill.ok .dot{background:var(--good)}
+.pill.bad{color:var(--critical)} .pill.bad .dot{background:var(--critical)}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 14px}
+.kpi .k-label{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.kpi .k-val{font-size:1.9rem;font-weight:650;margin-top:6px;letter-spacing:-.02em}
+.kpi .k-sub{color:var(--text-2);font-size:.78rem;margin-top:2px}
+.kpi.hero .k-val{color:var(--good-ink)}
+.kpi.hero.bad .k-val{color:var(--critical)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 34px;align-items:center;gap:12px;font-size:.85rem}
+.bar-row .b-label{color:var(--text-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:14px;position:relative;display:block;width:100%}
+.bar-fill{display:block;height:14px;background:var(--accent);border-radius:3px;min-width:3px}
+.bar-row .b-val{font-variant-numeric:tabular-nums;color:var(--text-2);font-weight:600}
+
+.chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.chip-col .c-head{font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);
+  font-weight:600;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.76rem;font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:6px;
+  background:color-mix(in srgb,var(--accent) 14%,transparent);
+  color:var(--text);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent)}
+
+.table-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters input,.filters select{background:var(--page);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:7px 10px;font-size:.83rem;font-family:inherit}
+.filters input{min-width:210px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+thead th{text-align:left;color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;
+  letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--grid);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+th.num,td.num{text-align:right}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text-2)}
+th.sortable::after{content:"⇅";opacity:.35;margin-left:4px;font-size:.9em}
+th.sortable.asc::after{content:"↑";opacity:.9}
+th.sortable.desc::after{content:"↓";opacity:.9}
+tbody tr.rule{border-bottom:1px solid var(--grid);cursor:pointer}
+tbody tr.rule:hover{background:color-mix(in srgb,var(--muted) 8%,transparent)}
+td{padding:10px}
+.r-title{font-weight:550}
+.r-stem{color:var(--muted);font-size:.76rem;font-family:ui-monospace,Consolas,monospace}
+.techs{font-variant-numeric:tabular-nums;color:var(--text-2);font-size:.8rem}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:600;
+  padding:2px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.badge .dot{width:8px;height:8px;border-radius:50%}
+.sev-critical{color:var(--critical)} .sev-critical .dot{background:var(--critical)}
+.sev-high{color:var(--serious)} .sev-high .dot{background:var(--serious)}
+.sev-medium{color:var(--text)} .sev-medium .dot{background:var(--warning)}
+.sev-low{color:var(--good-ink)} .sev-low .dot{background:var(--good)}
+.sev-informational{color:var(--text-2)} .sev-informational .dot{background:var(--muted)}
+.status-pass{color:var(--good-ink)} .status-fail{color:var(--critical)}
+.tests-cell{font-variant-numeric:tabular-nums}
+tr.detail td{padding:0 10px}
+tr.detail .detail-box{padding:2px 0 16px;color:var(--text-2);font-size:.85rem;max-width:80ch}
+tr.detail[hidden]{display:none}
+.detail-box .d-fp{margin-top:8px}
+.detail-box .d-fp li{margin:2px 0}
+.detail-box .fail{color:var(--critical);margin-top:8px;font-weight:600}
+.empty{color:var(--muted);text-align:center;padding:24px}
+.page-foot{color:var(--muted);font-size:.8rem;margin-top:28px;border-top:1px solid var(--grid);padding-top:16px}
+
+@media (max-width:820px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .bar-row{grid-template-columns:110px 1fr 30px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page-head">
+    <div>
+      <h1>Detection-as-Code Lab</h1>
+      <p class="sub">Detection-as-Code coverage &amp; health &middot; generated 2026-07-11 from the rule set</p>
+    </div>
+    <div class="head-right">
+      <span class="pill ok"><span class="dot"></span>All 15 detections passing</span>
+      <button id="theme" class="theme-btn" type="button" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Key metrics">
+    <div class="kpi"><div class="k-label">Detections</div><div class="k-val">15</div><div class="k-sub">Sigma rules</div></div>
+    <div class="kpi"><div class="k-label">ATT&amp;CK techniques</div><div class="k-val">17</div><div class="k-sub">MITRE mapped</div></div>
+    <div class="kpi"><div class="k-label">Tactics</div><div class="k-val">8</div><div class="k-sub">kill-chain phases</div></div>
+    <div class="kpi"><div class="k-label">Test assertions</div><div class="k-val">61</div><div class="k-sub">15/15 rules green</div></div>
+    <div class="kpi hero"><div class="k-label">Test pass rate</div><div class="k-val">100%</div><div class="k-sub">61/61 assertions</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Rules by ATT&amp;CK tactic</h2>
+    <p class="card-sub">How the 15 detections distribute across the kill chain (a rule can map to more than one tactic).</p>
+    <div class="bars">
+      <div class="bar-row"><span class="b-label">Execution</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="b-val">3</span></div>
+      <div class="bar-row"><span class="b-label">Persistence</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="b-val">3</span></div>
+      <div class="bar-row"><span class="b-label">Privilege Escalation</span><span class="bar-track"><span class="bar-fill" style="width:67%"></span></span><span class="b-val">2</span></div>
+      <div class="bar-row"><span class="b-label">Defense Evasion</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="b-val">3</span></div>
+      <div class="bar-row"><span class="b-label">Credential Access</span><span class="bar-track"><span class="bar-fill" style="width:100%"></span></span><span class="b-val">3</span></div>
+      <div class="bar-row"><span class="b-label">Discovery</span><span class="bar-track"><span class="bar-fill" style="width:33%"></span></span><span class="b-val">1</span></div>
+      <div class="bar-row"><span class="b-label">Command And Control</span><span class="bar-track"><span class="bar-fill" style="width:33%"></span></span><span class="b-val">1</span></div>
+      <div class="bar-row"><span class="b-label">Impact</span><span class="bar-track"><span class="bar-fill" style="width:33%"></span></span><span class="b-val">1</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>ATT&amp;CK technique coverage</h2>
+    <p class="card-sub">17 techniques covered, grouped by tactic.</p>
+    <div class="chip-grid">
+      <div class="chip-col"><div class="c-head">Execution</div><div class="chips"><span class="chip">T1047</span><span class="chip">T1059</span><span class="chip">T1059.001</span></div></div>
+      <div class="chip-col"><div class="c-head">Persistence</div><div class="chips"><span class="chip">T1053.005</span><span class="chip">T1098</span><span class="chip">T1136.001</span><span class="chip">T1547.001</span></div></div>
+      <div class="chip-col"><div class="c-head">Privilege Escalation</div><div class="chips"><span class="chip">T1053.005</span><span class="chip">T1098</span><span class="chip">T1136.001</span></div></div>
+      <div class="chip-col"><div class="c-head">Defense Evasion</div><div class="chips"><span class="chip">T1070.001</span><span class="chip">T1218.005</span><span class="chip">T1562.001</span></div></div>
+      <div class="chip-col"><div class="c-head">Credential Access</div><div class="chips"><span class="chip">T1003.001</span><span class="chip">T1003.002</span><span class="chip">T1003.003</span></div></div>
+      <div class="chip-col"><div class="c-head">Discovery</div><div class="chips"><span class="chip">T1087.002</span><span class="chip">T1482</span></div></div>
+      <div class="chip-col"><div class="c-head">Command And Control</div><div class="chips"><span class="chip">T1105</span></div></div>
+      <div class="chip-col"><div class="c-head">Impact</div><div class="chips"><span class="chip">T1490</span></div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="table-head">
+      <h2>Detections</h2>
+      <div class="filters">
+        <input id="q" type="search" placeholder="Search title or technique…" aria-label="Search detections">
+        <select id="f-tactic" aria-label="Filter by tactic"><option value="">All tactics</option><option value="execution">Execution</option><option value="persistence">Persistence</option><option value="privilege_escalation">Privilege Escalation</option><option value="defense_evasion">Defense Evasion</option><option value="credential_access">Credential Access</option><option value="discovery">Discovery</option><option value="command_and_control">Command And Control</option><option value="impact">Impact</option></select>
+        <select id="f-sev" aria-label="Filter by severity"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>informational</option></select>
+        <select id="f-status" aria-label="Filter by test status"><option value="">All statuses</option><option value="pass">Passing</option><option value="fail">Failing</option></select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-sort="title" class="sortable">Detection</th>
+            <th data-sort="tactic" class="sortable">Tactic</th>
+            <th>Techniques</th>
+            <th data-sort="sev" class="sortable">Severity</th>
+            <th data-sort="tests" class="sortable num">Tests</th>
+            <th data-sort="status" class="sortable">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="rule" data-tactic="credential_access" data-sev="high" data-status="pass" data-search="active directory database dump via ntdsutil proc_creation_ntdsutil_dump t1003.003" data-sorttitle="active directory database dump via ntdsutil" data-sorttactic="credential_access" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Active Directory Database Dump via ntdsutil</span><br><span class="r-stem">proc_creation_ntdsutil_dump</span></td><td>Credential Access</td><td class="techs">T1003.003</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects use of ntdsutil to create an Install-From-Media (IFM) copy of the NTDS.dit Active Directory database. On a domain controller this hands an attacker every domain credential hash at once, making it one of the highest impact credential-access actions. Legitimate use is limited to DC promotion and planned backups.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Sanctioned domain-controller backups or DC promotion. Confirm the operation was change-managed and initiated by an administrator.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="discovery" data-sev="medium" data-status="pass" data-search="active directory reconnaissance via built-in tools proc_creation_ad_recon t1087.002 t1482" data-sorttitle="active directory reconnaissance via built-in tools" data-sorttactic="discovery" data-sortsev="2" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Active Directory Reconnaissance via Built-in Tools</span><br><span class="r-stem">proc_creation_ad_recon</span></td><td>Discovery</td><td class="techs">T1087.002, T1482</td><td><span class="badge sev-medium"><span class="dot"></span>medium</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects domain reconnaissance performed with living-off-the-land tools: net group/user queries against the domain, nltest trust and DC enumeration, and dsquery. This activity typically follows initial access as an operator maps privileged accounts and domain trusts before moving laterally. Local (non- domain) net queries are excluded to keep the signal high.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Administrators and directory tools legitimately query AD. Volume and sequence (many discovery commands from one host in minutes) are the real signal; correlate rather than alert on a single benign query.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="command_and_control" data-sev="high" data-status="pass" data-search="ingress tool transfer via certutil proc_creation_certutil_download t1105" data-sorttitle="ingress tool transfer via certutil" data-sorttactic="command_and_control" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Ingress Tool Transfer via certutil</span><br><span class="r-stem">proc_creation_certutil_download</span></td><td>Command And Control</td><td class="techs">T1105</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects certutil.exe being abused to download a remote file (urlcache / verifyctl with an http/https/ftp URL). certutil is a signed certificate utility, not a downloader, so this pattern is a classic LOLBIN ingress-tool-transfer used to stage second-stage tooling while evading application allow-listing.</p><div class="d-fp"><strong>False positives:</strong><ul><li>certutil can legitimately fetch CRLs. The combination of urlcache + an arbitrary http URL writing a local file is the distinguishing factor.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="credential_access" data-sev="high" data-status="pass" data-search="lsass memory dump for credential theft proc_creation_lsass_dump t1003.001" data-sorttitle="lsass memory dump for credential theft" data-sorttactic="credential_access" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">LSASS Memory Dump for Credential Theft</span><br><span class="r-stem">proc_creation_lsass_dump</span></td><td>Credential Access</td><td class="techs">T1003.001</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects attempts to dump the memory of LSASS, the process that holds cached credentials and secrets. Covers two of the most common techniques: ProcDump with the -ma (full dump) flag against lsass, and the built-in comsvcs.dll MiniDump export invoked through rundll32. A successful LSASS dump typically precedes credential reuse and lateral movement.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Legitimate crash-dump collection by monitoring agents. Verify the parent process and the destination path of the dump file.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="persistence" data-sev="medium" data-status="pass" data-search="local account creation or privileged group addition via net proc_creation_local_account_manipulation t1136.001 t1098" data-sorttitle="local account creation or privileged group addition via net" data-sorttactic="persistence" data-sortsev="2" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Local Account Creation or Privileged Group Addition via net</span><br><span class="r-stem">proc_creation_local_account_manipulation</span></td><td>Persistence</td><td class="techs">T1136.001, T1098</td><td><span class="badge sev-medium"><span class="dot"></span>medium</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects creation of a new local account (net user /add) or the addition of an account to the local Administrators group (net localgroup administrators /add). Attackers create backdoor accounts for durable access and add accounts to privileged groups to escalate; both are cheap, high-signal actions on servers and workstations that rarely see routine local-account churn.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Provisioning scripts and MDM tooling create local accounts. Correlate with the account name and whether the action was operator-initiated.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="defense_evasion" data-sev="high" data-status="pass" data-search="microsoft defender tampering proc_creation_disable_defender t1562.001" data-sorttitle="microsoft defender tampering" data-sorttactic="defense_evasion" data-sortsev="1" data-sorttests="5" data-sortstatus="pass"><td><span class="r-title">Microsoft Defender Tampering</span><br><span class="r-stem">proc_creation_disable_defender</span></td><td>Defense Evasion</td><td class="techs">T1562.001</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">5</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects attempts to weaken Microsoft Defender: disabling real-time/behavior monitoring via Set-MpPreference, stopping the WinDefend service, or adding a broad ExclusionPath so future payloads are ignored. Disabling endpoint protection is a common precursor to dropping tooling and is high-signal outside of sanctioned maintenance windows.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Endpoint software or IT maintenance may set exclusions. Confirm the change was authorized and scoped narrowly (a specific signed path, not a whole drive).</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="defense_evasion" data-sev="high" data-status="pass" data-search="mshta executing remote or inline script proc_creation_mshta_remote t1218.005" data-sorttitle="mshta executing remote or inline script" data-sorttactic="defense_evasion" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Mshta Executing Remote or Inline Script</span><br><span class="r-stem">proc_creation_mshta_remote</span></td><td>Defense Evasion</td><td class="techs">T1218.005</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects mshta.exe (a signed Microsoft binary) being used to proxy execution of a remote payload (http/https) or inline script (javascript:/vbscript:). This is a well-worn signed-binary-proxy-execution technique that lets attackers run code while blending in with a trusted system binary. Local .hta launches from trusted directories are intentionally out of scope to limit noise.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Legacy line-of-business HTA applications hosted internally. Allow-list the specific URL or file path if the app is known-good.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="execution" data-sev="high" data-status="pass" data-search="office application spawning a command interpreter proc_creation_office_spawns_shell t1059" data-sorttitle="office application spawning a command interpreter" data-sorttactic="execution" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Office Application Spawning a Command Interpreter</span><br><span class="r-stem">proc_creation_office_spawns_shell</span></td><td>Execution</td><td class="techs">T1059</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects a Microsoft Office application (Word, Excel, PowerPoint, Outlook) spawning a command interpreter or script host. This parent/child relationship is a high-fidelity indicator of malicious macro or phishing-document execution, since Office apps rarely have a legitimate reason to launch cmd, PowerShell, wscript, cscript, or mshta.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Rare legitimate add-ins or document automation. Investigate the child command line; a benign add-in launching a signed helper is distinguishable from a macro dropping a downloader.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="execution" data-sev="high" data-status="pass" data-search="powershell encodedcommand execution proc_creation_powershell_encoded t1059.001" data-sorttitle="powershell encodedcommand execution" data-sorttactic="execution" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">PowerShell EncodedCommand Execution</span><br><span class="r-stem">proc_creation_powershell_encoded</span></td><td>Execution</td><td class="techs">T1059.001</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects PowerShell (powershell.exe / pwsh.exe) invoked with an encoded-command flag (-EncodedCommand / -enc / -ec). Attackers use Base64-encoded payloads to hide script contents from casual log inspection and to sidestep naive string detections. Matching on OriginalFileName as well as Image also catches the binary being renamed to evade image-name detections.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Some legitimate remote-management and deployment tools pass encoded commands. Tune by allow-listing known parent processes or signed script hosts.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="execution" data-sev="medium" data-status="pass" data-search="process execution via wmic process call create proc_creation_wmic_process_call_create t1047" data-sorttitle="process execution via wmic process call create" data-sorttactic="execution" data-sortsev="2" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Process Execution via WMIC process call create</span><br><span class="r-stem">proc_creation_wmic_process_call_create</span></td><td>Execution</td><td class="techs">T1047</td><td><span class="badge sev-medium"><span class="dot"></span>medium</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects use of WMIC to spawn a new process via &quot;process call create&quot;. This is a common living-off-the-land execution and lateral-movement technique because it runs the child process under WmiPrvSE, breaking the normal parent/child chain and evading detections that pivot on process ancestry.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Legitimate software deployment or administrative scripts. Tune by allow-listing the specific remote hosts / accounts used by your management tooling.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="credential_access" data-sev="high" data-status="pass" data-search="sensitive registry hive export via reg save proc_creation_reg_save_hive t1003.002" data-sorttitle="sensitive registry hive export via reg save" data-sorttactic="credential_access" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Sensitive Registry Hive Export via reg save</span><br><span class="r-stem">proc_creation_reg_save_hive</span></td><td>Credential Access</td><td class="techs">T1003.002</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects use of reg.exe to save the SAM, SYSTEM, or SECURITY registry hives to disk. Together these hives allow offline extraction of local account password hashes and LSA secrets, so exporting them is a classic credential-access step. Backing up non-sensitive keys is common and is deliberately excluded.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Backup software that legitimately exports the SYSTEM hive. Correlate with the running account and whether SAM/SECURITY are dumped in the same window.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="impact" data-sev="critical" data-status="pass" data-search="shadow copy deletion / recovery inhibition proc_creation_shadowcopy_delete t1490" data-sorttitle="shadow copy deletion / recovery inhibition" data-sorttactic="impact" data-sortsev="0" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Shadow Copy Deletion / Recovery Inhibition</span><br><span class="r-stem">proc_creation_shadowcopy_delete</span></td><td>Impact</td><td class="techs">T1490</td><td><span class="badge sev-critical"><span class="dot"></span>critical</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects deletion of Volume Shadow Copies and tampering with Windows recovery, via vssadmin, wmic shadowcopy, wbadmin, or bcdedit. This is the near-universal pre-encryption step in ransomware playbooks: destroying backups and disabling recovery so victims cannot roll back. Very high fidelity and time-critical.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Rare. Some backup products prune shadow copies; these are known and scheduled. Any interactive vssadmin delete on a workstation warrants immediate triage.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="persistence" data-sev="high" data-status="pass" data-search="suspicious autorun value in registry run key registry_run_key_suspicious t1547.001" data-sorttitle="suspicious autorun value in registry run key" data-sorttactic="persistence" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Suspicious Autorun Value in Registry Run Key</span><br><span class="r-stem">registry_run_key_suspicious</span></td><td>Persistence</td><td class="techs">T1547.001</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects a value written to a CurrentVersion\Run or \RunOnce autostart key whose data points at a script host, LOLBIN, or a user-writable staging directory (AppData/Temp/ProgramData). Legitimate applications register autoruns too, so the detection keys on the *content* of the value rather than merely the location.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Some legitimate updaters stage helpers in ProgramData. Confirm the writing process (Image) and whether the target binary is signed.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="persistence" data-sev="medium" data-status="pass" data-search="suspicious scheduled task creation via schtasks proc_creation_scheduled_task_create t1053.005" data-sorttitle="suspicious scheduled task creation via schtasks" data-sorttactic="persistence" data-sortsev="2" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Suspicious Scheduled Task Creation via schtasks</span><br><span class="r-stem">proc_creation_scheduled_task_create</span></td><td>Persistence</td><td class="techs">T1053.005</td><td><span class="badge sev-medium"><span class="dot"></span>medium</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects creation of a scheduled task (schtasks /create) whose action runs a script interpreter, an encoded command, a binary staged in a user-writable directory, or runs as SYSTEM. Scheduled tasks are a durable persistence and privilege-escalation mechanism; keying on the action&#x27;s content suppresses the large volume of benign task creation.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Software installers create tasks that call helpers in ProgramData. Confirm the task action binary is signed and expected.</li></ul></div></div></td></tr>
+          <tr class="rule" data-tactic="defense_evasion" data-sev="high" data-status="pass" data-search="windows event log cleared proc_creation_clear_eventlog t1070.001" data-sorttitle="windows event log cleared" data-sorttactic="defense_evasion" data-sortsev="1" data-sorttests="4" data-sortstatus="pass"><td><span class="r-title">Windows Event Log Cleared</span><br><span class="r-stem">proc_creation_clear_eventlog</span></td><td>Defense Evasion</td><td class="techs">T1070.001</td><td><span class="badge sev-high"><span class="dot"></span>high</span></td><td class="num tests-cell">4</td><td><span class="badge status-pass">✔ PASS</span></td></tr>
+          <tr class="detail" hidden><td colspan="6"><div class="detail-box"><p>Detects clearing of Windows event logs via wevtutil (cl/clear-log) or the PowerShell Clear-EventLog / Remove-EventLog cmdlets. Wiping logs is an anti-forensics step used to destroy evidence of prior activity and almost never has a legitimate cause on production systems.</p><div class="d-fp"><strong>False positives:</strong><ul><li>Very rare. Some backup or imaging workflows clear logs; these should be known and change-managed.</li></ul></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="empty" class="empty" hidden>No detections match these filters.</p>
+  </section>
+
+  <footer class="page-foot">
+    Generated by <code>tools/generate_dashboard.py</code> &middot; every figure is computed
+    from the rules and their live test results. Regenerate with <code>make dashboard</code>.
+  </footer>
+</div>
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('theme');
+  btn.addEventListener('click',function(){
+    var next=root.getAttribute('data-theme')==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    try{localStorage.setItem('dac-theme',next);}catch(e){}
+  });
+
+  var tbody=document.querySelector('#tbl tbody');
+  var rows=[].slice.call(tbody.querySelectorAll('tr.rule'));
+  var q=document.getElementById('q'), ft=document.getElementById('f-tactic'),
+      fs=document.getElementById('f-sev'), fst=document.getElementById('f-status'),
+      empty=document.getElementById('empty');
+
+  function apply(){
+    var term=(q.value||'').toLowerCase(), t=ft.value, s=fs.value, st=fst.value, shown=0;
+    rows.forEach(function(r){
+      var det=r.nextElementSibling;
+      var ok=(!term||r.dataset.search.indexOf(term)>-1)
+        &&(!t||r.dataset.tactic===t)
+        &&(!s||r.dataset.sev===s)
+        &&(!st||r.dataset.status===st);
+      r.hidden=!ok;
+      if(det&&det.classList.contains('detail')){det.hidden=true;r.classList.remove('open');}
+      if(ok)shown++;
+    });
+    empty.hidden=shown>0;
+  }
+  [q,ft,fs,fst].forEach(function(el){el.addEventListener('input',apply);});
+
+  rows.forEach(function(r){
+    r.addEventListener('click',function(e){
+      if(e.target.closest('a'))return;
+      var det=r.nextElementSibling;
+      if(det&&det.classList.contains('detail')){det.hidden=!det.hidden;r.classList.toggle('open',!det.hidden);}
+    });
+  });
+
+  var ths=[].slice.call(document.querySelectorAll('th.sortable'));
+  ths.forEach(function(th){
+    th.addEventListener('click',function(){
+      var key=th.dataset.sort, asc=!th.classList.contains('asc');
+      ths.forEach(function(o){o.classList.remove('asc','desc');});
+      th.classList.add(asc?'asc':'desc');
+      var pairs=rows.map(function(r){return [r,r.nextElementSibling];});
+      pairs.sort(function(a,b){
+        var x=a[0].dataset['sort'+key]||'', y=b[0].dataset['sort'+key]||'';
+        var nx=parseFloat(x), ny=parseFloat(y);
+        if(!isNaN(nx)&&!isNaN(ny)){x=nx;y=ny;}
+        return (x<y?-1:x>y?1:0)*(asc?1:-1);
+      });
+      pairs.forEach(function(p){tbody.appendChild(p[0]);if(p[1])tbody.appendChild(p[1]);});
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+rule: impact/proc_creation_shadowcopy_delete.yml
+atomic_test: T1490 / "Windows - Delete Volume Shadow Copies" (vssadmin/wmic)
+true_positives:
+  - name: vssadmin deletes all shadow copies quietly
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\vssadmin.exe'
+      CommandLine: 'vssadmin.exe delete shadows /all /quiet'
+      ParentImage: 'C:\Users\victim\AppData\Local\Temp\locker.exe'
+  - name: bcdedit disables automatic recovery
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\bcdedit.exe'
+      CommandLine: 'bcdedit.exe /set {default} recoveryenabled no'
+true_negatives:
+  - name: listing shadow copies is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\vssadmin.exe'
+      CommandLine: 'vssadmin.exe list shadows'
+  - name: bcdedit enumerating the boot config is benign
+    event:
+      EventID: 1
+      Image: 'C:\Windows\System32\bcdedit.exe'
+      CommandLine: 'bcdedit.exe /enum'

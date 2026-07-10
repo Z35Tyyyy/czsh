@@ -1,0 +1,44 @@
+title: Office Application Spawning a Command Interpreter
+id: 6f2a1b30-9a1e-4c8d-9d21-0a1b2c3d4e03
+status: experimental
+description: >
+  Detects a Microsoft Office application (Word, Excel, PowerPoint, Outlook)
+  spawning a command interpreter or script host. This parent/child relationship is
+  a high-fidelity indicator of malicious macro or phishing-document execution,
+  since Office apps rarely have a legitimate reason to launch cmd, PowerShell,
+  wscript, cscript, or mshta.
+references:
+  - https://attack.mitre.org/techniques/T1059/
+  - https://attack.mitre.org/techniques/T1566/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059/T1059.md
+author: Kanishk Singh
+date: 2026/07/10
+tags:
+  - attack.execution
+  - attack.t1059
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\winword.exe'
+      - '\excel.exe'
+      - '\powerpnt.exe'
+      - '\outlook.exe'
+      - '\mspub.exe'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\regsvr32.exe'
+  condition: selection_parent and selection_child
+falsepositives:
+  - Rare legitimate add-ins or document automation. Investigate the child command
+    line; a benign add-in launching a signed helper is distinguishable from a macro
+    dropping a downloader.
+level: high
