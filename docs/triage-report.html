@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>SOC Triage Queue — Detection-as-Code Lab</title>
+<script>(function(){var r=document.documentElement,s=null;try{s=localStorage.getItem('dac-theme');}catch(e){}var d=s?(s==='dark'):(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);r.setAttribute('data-theme',d?'dark':'light');})();</script>
+<style>
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--text:#0b0b0b;--text-2:#52514e;
+ --muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);--accent:#2a78d6;
+ --good:#0ca30c;--good-ink:#006300;--warning:#fab219;--serious:#ec835a;--critical:#d03b3b}
+:root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--text:#fff;
+ --text-2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--accent:#3987e5;
+ --good-ink:#0ca30c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+.wrap{max-width:1000px;margin:0 auto;padding:32px 20px 56px}
+h1{font-size:1.5rem;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--text-2);margin:4px 0 0;font-size:.9rem}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}
+.theme-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-2);
+ width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:1rem;flex-shrink:0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.kpi .l{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.kpi .v{font-size:1.7rem;font-weight:650;margin-top:4px}
+.note{color:var(--muted);font-size:.82rem;margin:0 0 18px}
+.alert{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--muted);
+ border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.alert.P1{border-left-color:var(--critical)} .alert.P2{border-left-color:var(--serious)}
+.alert.P3{border-left-color:var(--warning)} .alert.P4{border-left-color:var(--good)}
+.a-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.prio{font-weight:700;font-variant-numeric:tabular-nums}
+.a-title{font-weight:600}
+.a-id{color:var(--muted);font-family:ui-monospace,Consolas,monospace;font-size:.76rem;margin-left:auto}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;
+ padding:2px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.badge .dot{width:7px;height:7px;border-radius:50%}
+.sev-critical{color:var(--critical)} .sev-critical .dot{background:var(--critical)}
+.sev-high{color:var(--serious)} .sev-high .dot{background:var(--serious)}
+.sev-medium{color:var(--text)} .sev-medium .dot{background:var(--warning)}
+.sev-low{color:var(--good-ink)} .sev-low .dot{background:var(--good)}
+.sev-informational{color:var(--text-2)} .sev-informational .dot{background:var(--muted)}
+.tp-y{color:var(--critical)} .tp-n{color:var(--text-2)}
+.summary{margin:4px 0 8px;font-size:.92rem}
+.meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--text-2);font-size:.8rem;margin-bottom:8px}
+.iocs code{background:color-mix(in srgb,var(--critical) 12%,transparent);padding:1px 5px;
+ border-radius:4px;font-size:.78rem;margin-right:4px}
+.actions{margin:6px 0 0;padding-left:18px;font-size:.85rem;color:var(--text-2)}
+.actions li{margin:2px 0}
+.foot{color:var(--muted);font-size:.8rem;margin-top:26px;border-top:1px solid var(--grid);padding-top:14px}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>SOC Triage Queue</h1>
+      <p class="sub">AI-drafted triage for alerts raised by the detection set · generated 2026-07-11</p>
+    </div>
+    <button id="theme" class="theme-btn" type="button" aria-label="Toggle theme">◐</button>
+  </div>
+  <section class="kpis">
+      <div class="kpi"><div class="l">Alerts in queue</div><div class="v">31</div></div>
+      <div class="kpi"><div class="l">P1 / P2 (urgent)</div><div class="v">24</div></div>
+      <div class="kpi"><div class="l">Likely true positive</div><div class="v">77%</div></div>
+      <div class="kpi"><div class="l">Triaged by</div><div class="v">Heuristic</div></div>
+  </section>
+  <p class="note">Each alert is a detection firing on a sample event; the triage
+  (summary, severity, next steps) is drafted automatically. An analyst reviews the
+  queue top-down by priority instead of starting each alert from scratch.</p>
+    <div class="alert P1">
+      <div class="a-top">
+        <span class="prio">P1</span>
+        <span class="badge sev-critical"><span class="dot"></span>critical</span>
+        <span class="a-title">Shadow Copy Deletion / Recovery Inhibition</span>
+        <span class="a-id">ALERT-0026 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Shadow Copy Deletion / Recovery Inhibition fired on WORKSTATION-01 (Inhibit System Recovery).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: high</span>
+        <span>T1490 Inhibit System Recovery</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host immediately — possible ransomware pre-encryption</li><li>Verify backup and shadow-copy integrity</li><li>Engage incident response</li></ul>
+    </div>
+    <div class="alert P1">
+      <div class="a-top">
+        <span class="prio">P1</span>
+        <span class="badge sev-critical"><span class="dot"></span>critical</span>
+        <span class="a-title">Shadow Copy Deletion / Recovery Inhibition</span>
+        <span class="a-id">ALERT-0027 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Shadow Copy Deletion / Recovery Inhibition fired on WORKSTATION-01 (Inhibit System Recovery).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: high</span>
+        <span>T1490 Inhibit System Recovery</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host immediately — possible ransomware pre-encryption</li><li>Verify backup and shadow-copy integrity</li><li>Engage incident response</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Ingress Tool Transfer via certutil</span>
+        <span class="a-id">ALERT-0003 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Ingress Tool Transfer via certutil fired on WORKSTATION-01 (Ingress Tool Transfer). Observed indicators: ipv4=192.0.2.5; url=http://192.0.2.5/beacon.exe.</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: high</span>
+        <span>T1105 Ingress Tool Transfer</span>
+      </div>
+      <div class="meta iocs"><span>Indicators:</span> <span><code>192.0.2.5</code><code>http://192.0.2.5/beacon.exe</code></span></div>
+      <ul class="actions"><li>Block the observed network indicators at the perimeter</li><li>Inspect what was downloaded and whether it executed</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Ingress Tool Transfer via certutil</span>
+        <span class="a-id">ALERT-0004 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Ingress Tool Transfer via certutil fired on WORKSTATION-01 (Ingress Tool Transfer). Observed indicators: url=https://evil.example/tool.dll.</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1105 Ingress Tool Transfer</span>
+      </div>
+      <div class="meta iocs"><span>Indicators:</span> <span><code>https://evil.example/tool.dll</code></span></div>
+      <ul class="actions"><li>Block the observed network indicators at the perimeter</li><li>Inspect what was downloaded and whether it executed</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Windows Event Log Cleared</span>
+        <span class="a-id">ALERT-0005 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Windows Event Log Cleared fired on WORKSTATION-01 (Clear Windows Event Logs).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1070.001 Clear Windows Event Logs</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Windows Event Log Cleared</span>
+        <span class="a-id">ALERT-0006 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Windows Event Log Cleared fired on WORKSTATION-01 (Clear Windows Event Logs).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1070.001 Clear Windows Event Logs</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Microsoft Defender Tampering</span>
+        <span class="a-id">ALERT-0007 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Microsoft Defender Tampering fired on WORKSTATION-01 (Disable or Modify Tools).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1562.001 Disable or Modify Tools</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Microsoft Defender Tampering</span>
+        <span class="a-id">ALERT-0008 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Microsoft Defender Tampering fired on WORKSTATION-01 (Disable or Modify Tools).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1562.001 Disable or Modify Tools</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Microsoft Defender Tampering</span>
+        <span class="a-id">ALERT-0009 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Microsoft Defender Tampering fired on WORKSTATION-01 (Disable or Modify Tools).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1562.001 Disable or Modify Tools</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">LSASS Memory Dump for Credential Theft</span>
+        <span class="a-id">ALERT-0012 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">LSASS Memory Dump for Credential Theft fired on WORKSTATION-01 (LSASS Memory Dumping).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.001 LSASS Memory Dumping</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">LSASS Memory Dump for Credential Theft</span>
+        <span class="a-id">ALERT-0013 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">LSASS Memory Dump for Credential Theft fired on WORKSTATION-01 (LSASS Memory Dumping).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.001 LSASS Memory Dumping</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Mshta Executing Remote or Inline Script</span>
+        <span class="a-id">ALERT-0014 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Mshta Executing Remote or Inline Script fired on WORKSTATION-01 (Mshta Proxy Execution). Observed indicators: ipv4=192.0.2.10; url=http://192.0.2.10/payload.hta.</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: high</span>
+        <span>T1218.005 Mshta Proxy Execution</span>
+      </div>
+      <div class="meta iocs"><span>Indicators:</span> <span><code>192.0.2.10</code><code>http://192.0.2.10/payload.hta</code></span></div>
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Mshta Executing Remote or Inline Script</span>
+        <span class="a-id">ALERT-0015 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Mshta Executing Remote or Inline Script fired on WORKSTATION-01 (Mshta Proxy Execution).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1218.005 Mshta Proxy Execution</span>
+      </div>
+      
+      <ul class="actions"><li>Confirm whether security tooling was actually disabled</li><li>Re-enable protections and preserve logs</li><li>Investigate what the evasion was intended to hide</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Active Directory Database Dump via ntdsutil</span>
+        <span class="a-id">ALERT-0016 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Active Directory Database Dump via ntdsutil fired on WORKSTATION-01 (NTDS.dit Extraction).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.003 NTDS.dit Extraction</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Active Directory Database Dump via ntdsutil</span>
+        <span class="a-id">ALERT-0017 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Active Directory Database Dump via ntdsutil fired on WORKSTATION-01 (NTDS.dit Extraction).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.003 NTDS.dit Extraction</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Office Application Spawning a Command Interpreter</span>
+        <span class="a-id">ALERT-0018 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Office Application Spawning a Command Interpreter fired on WORKSTATION-01 (Command and Scripting Interpreter).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1059 Command and Scripting Interpreter</span>
+      </div>
+      
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Office Application Spawning a Command Interpreter</span>
+        <span class="a-id">ALERT-0019 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Office Application Spawning a Command Interpreter fired on WORKSTATION-01 (Command and Scripting Interpreter). Observed indicators: url=http://evil/x.exe.</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1059 Command and Scripting Interpreter</span>
+      </div>
+      <div class="meta iocs"><span>Indicators:</span> <span><code>http://evil/x.exe</code></span></div>
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">PowerShell EncodedCommand Execution</span>
+        <span class="a-id">ALERT-0020 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">PowerShell EncodedCommand Execution fired on WORKSTATION-01 (PowerShell).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1059.001 PowerShell</span>
+      </div>
+      
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">PowerShell EncodedCommand Execution</span>
+        <span class="a-id">ALERT-0021 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">PowerShell EncodedCommand Execution fired on WORKSTATION-01 (PowerShell).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1059.001 PowerShell</span>
+      </div>
+      
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Sensitive Registry Hive Export via reg save</span>
+        <span class="a-id">ALERT-0022 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Sensitive Registry Hive Export via reg save fired on WORKSTATION-01 (Security Account Manager (SAM) Theft).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.002 Security Account Manager (SAM) Theft</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Sensitive Registry Hive Export via reg save</span>
+        <span class="a-id">ALERT-0023 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Sensitive Registry Hive Export via reg save fired on WORKSTATION-01 (Security Account Manager (SAM) Theft).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1003.002 Security Account Manager (SAM) Theft</span>
+      </div>
+      
+      <ul class="actions"><li>Isolate the host from the network</li><li>Force-reset credentials that may have been exposed</li><li>Hunt for lateral movement from this host</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Process Execution via WMIC process call create</span>
+        <span class="a-id">ALERT-0029 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Process Execution via WMIC process call create fired on WORKSTATION-01 (Windows Management Instrumentation). Observed indicators: ipv4=10.0.0.5.</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1047 Windows Management Instrumentation</span>
+      </div>
+      <div class="meta iocs"><span>Indicators:</span> <span><code>10.0.0.5</code></span></div>
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Suspicious Autorun Value in Registry Run Key</span>
+        <span class="a-id">ALERT-0030 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Suspicious Autorun Value in Registry Run Key fired on WORKSTATION-01 (Registry Run Keys / Startup Folder).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1547.001 Registry Run Keys / Startup Folder</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P2">
+      <div class="a-top">
+        <span class="prio">P2</span>
+        <span class="badge sev-high"><span class="dot"></span>high</span>
+        <span class="a-title">Suspicious Autorun Value in Registry Run Key</span>
+        <span class="a-id">ALERT-0031 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Suspicious Autorun Value in Registry Run Key fired on WORKSTATION-01 (Registry Run Keys / Startup Folder).</div>
+      <div class="meta">
+        <span class="tp-y">likely TRUE POSITIVE</span>
+        <span>confidence: medium</span>
+        <span>T1547.001 Registry Run Keys / Startup Folder</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Active Directory Reconnaissance via Built-in Tools</span>
+        <span class="a-id">ALERT-0001 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Active Directory Reconnaissance via Built-in Tools fired on WORKSTATION-01 (Domain Account Discovery, Domain Trust Discovery).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1087.002 Domain Account Discovery, T1482 Domain Trust Discovery</span>
+      </div>
+      
+      <ul class="actions"><li>Correlate with other activity from the same host/account</li><li>Assess whether reconnaissance preceded further actions</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Active Directory Reconnaissance via Built-in Tools</span>
+        <span class="a-id">ALERT-0002 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Active Directory Reconnaissance via Built-in Tools fired on WORKSTATION-01 (Domain Account Discovery, Domain Trust Discovery).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1087.002 Domain Account Discovery, T1482 Domain Trust Discovery</span>
+      </div>
+      
+      <ul class="actions"><li>Correlate with other activity from the same host/account</li><li>Assess whether reconnaissance preceded further actions</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Local Account Creation or Privileged Group Addition via net</span>
+        <span class="a-id">ALERT-0010 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Local Account Creation or Privileged Group Addition via net fired on WORKSTATION-01 (Create Local Account, Account Manipulation).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1136.001 Create Local Account, T1098 Account Manipulation</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Local Account Creation or Privileged Group Addition via net</span>
+        <span class="a-id">ALERT-0011 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Local Account Creation or Privileged Group Addition via net fired on WORKSTATION-01 (Create Local Account, Account Manipulation).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1136.001 Create Local Account, T1098 Account Manipulation</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Suspicious Scheduled Task Creation via schtasks</span>
+        <span class="a-id">ALERT-0024 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Suspicious Scheduled Task Creation via schtasks fired on WORKSTATION-01 (Scheduled Task).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1053.005 Scheduled Task</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Suspicious Scheduled Task Creation via schtasks</span>
+        <span class="a-id">ALERT-0025 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Suspicious Scheduled Task Creation via schtasks fired on WORKSTATION-01 (Scheduled Task).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1053.005 Scheduled Task</span>
+      </div>
+      
+      <ul class="actions"><li>Capture the autostart entry / task before remediation</li><li>Determine how the persistence was established</li><li>Scan for related artifacts across the fleet</li></ul>
+    </div>
+    <div class="alert P3">
+      <div class="a-top">
+        <span class="prio">P3</span>
+        <span class="badge sev-medium"><span class="dot"></span>medium</span>
+        <span class="a-title">Process Execution via WMIC process call create</span>
+        <span class="a-id">ALERT-0028 · WORKSTATION-01</span>
+      </div>
+      <div class="summary">Process Execution via WMIC process call create fired on WORKSTATION-01 (Windows Management Instrumentation).</div>
+      <div class="meta">
+        <span class="tp-n">possible false positive</span>
+        <span>confidence: low</span>
+        <span>T1047 Windows Management Instrumentation</span>
+      </div>
+      
+      <ul class="actions"><li>Review the full process tree and parent process</li><li>Determine the source of the executed content</li></ul>
+    </div>
+  <footer class="foot">Generated by <code>tools/generate_triage_report.py</code>.
+  The triage client is pluggable — this report used the <strong>Heuristic</strong> client.</footer>
+</div>
+<script>document.getElementById('theme').addEventListener('click',function(){var r=document.documentElement,n=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',n);try{localStorage.setItem('dac-theme',n);}catch(e){}});</script>
+</body>
+</html>
