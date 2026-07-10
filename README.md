@@ -131,7 +131,7 @@ The heatmap in [`docs/attack-layer.json`](docs/attack-layer.json) renders in the
 ## Quickstart
 
 ```bash
-git clone <this-repo> && cd detection-as-code-lab
+git clone https://github.com/Z35Tyyyy/czsh.git && cd czsh
 python -m pip install -r requirements-dev.txt
 
 make test        # run the offline detection harness (no SIEM needed)
