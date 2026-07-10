@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Detection-as-Code Lab</title>
+<meta name="description" content="15 Sigma detections, unit-tested offline, shipped through CI/CD, with an LLM alert-triage layer.">
+<script>
+(function(){var r=document.documentElement,s=null;
+try{s=localStorage.getItem('dac-theme');}catch(e){}
+var d=s?(s==='dark'):(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);
+r.setAttribute('data-theme',d?'dark':'light');})();
+</script>
+<style>
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--text:#0b0b0b;--text-2:#52514e;
+ --muted:#898781;--grid:#e1e0d9;--border:rgba(11,11,11,.10);--accent:#2a78d6;--good-ink:#006300}
+:root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--text:#fff;
+ --text-2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--border:rgba(255,255,255,.10);--accent:#3987e5;--good-ink:#0ca30c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:880px;margin:0 auto;padding:56px 20px 64px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+h1{font-size:2rem;margin:0;font-weight:680;letter-spacing:-.02em}
+.tag{color:var(--text-2);font-size:1.05rem;margin:10px 0 0;max-width:60ch}
+.theme-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-2);
+ width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:1.05rem;flex-shrink:0}
+.stats{display:flex;flex-wrap:wrap;gap:26px;margin:30px 0 34px}
+.stat .v{font-size:1.7rem;font-weight:680;letter-spacing:-.02em}
+.stat .l{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-top:2px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+a.card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:14px;
+ padding:20px;text-decoration:none;color:inherit;transition:border-color .12s,transform .12s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+a.card .t{font-weight:640;font-size:1.05rem;display:flex;align-items:center;gap:8px}
+a.card .d{color:var(--text-2);font-size:.9rem;margin-top:6px}
+a.card .arrow{color:var(--accent);margin-left:auto}
+.about{margin:36px 0 0;color:var(--text-2);font-size:.95rem;max-width:66ch}
+.about strong{color:var(--text)}
+.feat{margin:18px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
+.feat li{color:var(--text-2);font-size:.9rem;padding-left:18px;position:relative}
+.feat li::before{content:"▸";color:var(--accent);position:absolute;left:0}
+.foot{color:var(--muted);font-size:.85rem;margin-top:40px;border-top:1px solid var(--grid);padding-top:18px}
+.foot a{color:var(--accent)}
+@media (max-width:640px){.cards,.feat{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Detection-as-Code Lab</h1>
+      <p class="tag">Sigma detections that are unit-tested offline, mapped to MITRE ATT&amp;CK,
+      shipped through a CI/CD pipeline, and triaged by an LLM — the software-engineering
+      discipline of detection engineering, end to end.</p>
+    </div>
+    <button id="theme" class="theme-btn" type="button" aria-label="Toggle theme">◐</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">15</div><div class="l">Detections</div></div>
+    <div class="stat"><div class="v">17</div><div class="l">ATT&amp;CK techniques</div></div>
+    <div class="stat"><div class="v">8</div><div class="l">Tactics</div></div>
+    <div class="stat"><div class="v">171</div><div class="l">Tests</div></div>
+    <div class="stat"><div class="v" style="color:var(--good-ink)">100%</div><div class="l">CI passing</div></div>
+  </div>
+
+  <div class="cards">
+    <a class="card" href="dashboard.html">
+      <div class="t">Coverage &amp; Health Dashboard <span class="arrow">→</span></div>
+      <div class="d">Live per-rule test status, ATT&amp;CK coverage, and a filterable detections table.</div>
+    </a>
+    <a class="card" href="triage-report.html">
+      <div class="t">SOC Triage Queue <span class="arrow">→</span></div>
+      <div class="d">Alerts with AI-drafted triage — summary, severity, and next steps, by priority.</div>
+    </a>
+    <a class="card" href="https://github.com/Z35Tyyyy/czsh/blob/main/docs/DETECTIONS.md">
+      <div class="t">Detection Catalog <span class="arrow">→</span></div>
+      <div class="d">Every rule, its ATT&amp;CK mapping, severity, and test count — generated from the rules.</div>
+    </a>
+    <a class="card" href="https://github.com/Z35Tyyyy/czsh">
+      <div class="t">Source on GitHub <span class="arrow">→</span></div>
+      <div class="d">The engine, rules, CI/CD pipeline, LLM triage layer, and lab setup guide.</div>
+    </a>
+  </div>
+
+  <p class="about">Detection rules are code — they deserve version control, code review, tests,
+  and CI/CD. This project is a small, complete demonstration: a pure-Python Sigma engine
+  unit-tests each detection against known-malicious and benign events with <strong>no live
+  SIEM</strong>, a GitHub Actions pipeline gates every change, and an LLM layer (Groq) drafts
+  the tier-1 triage an analyst would otherwise write from scratch.</p>
+
+  <ul class="feat">
+    <li>Offline Sigma evaluation engine (parser + matcher)</li>
+    <li>Every rule ships with true/false-positive tests</li>
+    <li>CI: lint → validate → test → translate → deploy</li>
+    <li>Compiles rules to Splunk SPL / Elastic queries</li>
+    <li>ATT&amp;CK Navigator coverage layer</li>
+    <li>LLM alert triage with prompt-injection defense</li>
+  </ul>
+
+  <div class="foot">
+    Built as a blue-team / detection-engineering portfolio project ·
+    <a href="https://github.com/Z35Tyyyy/czsh">github.com/Z35Tyyyy/czsh</a>
+  </div>
+</div>
+</body>
+</html>
